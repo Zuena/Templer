@@ -1,5 +1,5 @@
 ﻿
-
+//Game.ExecuteCommand("say \"bla bla bla\"");   sagen
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,7 +8,7 @@ using Ensage;
 using Ensage.Common;
 using Ensage.Common.Extensions;
 using Ensage.Common.Menu;
-
+using SharpDX.Direct3D;
 using SharpDX;
 
 namespace TemplerA
@@ -18,11 +18,13 @@ namespace TemplerA
     {
 
 
+
         private static Ability Refraction, Meld, Trap, ptrap;
-        private static Item blink, bkb, phase, hex, manta;
+        private static Item blink, bkb, phase, hex, manta, hurricane;
         private static readonly Menu Menu = new Menu("TemplerA", "templera", true, "npc_dota_hero_Templar_Assassin", true);
         private static Hero me, target;
         private static bool combo, psi;
+        
         private static AbilityToggler menuValue;
 
         private static bool menuvalueSet;
@@ -37,19 +39,21 @@ namespace TemplerA
             menu_zuena.AddItem(new MenuItem("orbwalk", "orbwalk").SetValue(false));
             Menu.AddSubMenu(menu_zuena);        
             menu_zuena.AddItem(new MenuItem("comboKey", "Combo Key").SetValue(new KeyBind(32, KeyBindType.Press)));
+            menu_zuena.AddItem(new MenuItem("psiKey", "Psi Key").SetValue(new KeyBind(31, KeyBindType.Press)));
             Menu.AddToMainMenu();
             var dict = new Dictionary<string, bool>
             {
-              {"item_manta", true }, {"item_black_king_bar", true }, { "item_sheepstick", true }, {"item_phase_boots", true }, {"item_blink",true}
+              {"item_manta", true }, {"item_black_king_bar", true }, { "item_sheepstick", true }, {"item_phase_boots", true }, {"item_blink",true}, {"item_hurricane_pike",true}
             };
             Menu.AddItem(
                 new MenuItem("Items", "Items:").SetValue(new AbilityToggler(dict)));
         }
 
 
+        
         public static void Game_OnUpdate(EventArgs args)
         {
-            me = ObjectMgr.LocalHero;
+            me = ObjectManager.LocalHero;
 
             if (!Game.IsInGame || Game.IsPaused || Game.IsWatchingGame)
                 return;
@@ -86,6 +90,9 @@ namespace TemplerA
 
             if (manta == null)
                 manta = me.FindItem("item_manta");
+
+            if (hurricane == null)
+                hurricane = me.FindItem("item_hurricane_pike");
 
             if (!menuvalueSet)
             {
@@ -134,7 +141,7 @@ namespace TemplerA
 
 
 
-                        var traps = ObjectMgr.GetEntities<Unit>().Where(Unit => Unit.Name == "npc_dota_templar_assassin_psionic_trap").ToList();
+                        var traps = ObjectManager.GetEntities<Unit>().Where(Unit => Unit.Name == "npc_dota_templar_assassin_psionic_trap").ToList();
                         foreach (var q in traps)
                         {
                             if (target.Position.Distance2D(q.Position) < 370 && q.Spellbook.SpellQ.CanBeCasted() && Utils.SleepCheck("traps") && !target.Modifiers.ToList().Exists(x => x.Name == "modifier_templar_assassin_trap_slow"))
@@ -182,13 +189,34 @@ namespace TemplerA
                             Utils.Sleep(150 + Game.Ping, "hex");
                         }
 
+
+                        var dmg = me.MinimumDamage + me.BonusDamage;
+                        var hp = target.Health;
+
+
+                        if (hurricane != null && hurricane.CanBeCasted() && menuValue.IsEnabled(hurricane.Name) && Utils.SleepCheck("hurricane") && hp <= (dmg * 4))
+                        {
+                            hurricane.UseAbility(target);
+                            Utils.Sleep(150 + Game.Ping, "hurricane");
+                            
+
+                        }
+
+                        if (me.Modifiers.ToList().Exists(k => k.Name == "modifier_item_hurricane_pike_range") && Utils.SleepCheck("attackh"))
+
+                        {
+                            me.Attack(target);
+                            Utils.Sleep(150 + Game.Ping, "attackh");
+                        }
+
+                        
                         if (manta != null && manta.CanBeCasted() && menuValue.IsEnabled(manta.Name) && Utils.SleepCheck("manta") && me.Distance2D(target) <= attackrange && !me.Modifiers.ToList().Exists(y => y.Name == "modifier_templar_assassin_meld"))
                         {
                             manta.UseAbility();
                             Utils.Sleep(150 + Game.Ping, "manta");
                         }
 
-                        var illusions = ObjectMgr.GetEntities<Hero>().Where(f => f.IsAlive && f.IsControllable && f.Team == me.Team && f.IsIllusion && f.Modifiers.Any(y => y.Name != "modifier_kill")).ToList();
+                        var illusions = ObjectManager.GetEntities<Hero>().Where(f => f.IsAlive && f.IsControllable && f.Team == me.Team && f.IsIllusion && f.Modifiers.Any(y => y.Name != "modifier_kill")).ToList();
                         foreach (var illusion in illusions.TakeWhile(illusion => Utils.SleepCheck("illu_attacking" + illusion.Handle)))
                         {
                             illusion.Attack(target);
@@ -221,7 +249,7 @@ namespace TemplerA
                             Utils.Sleep(Game.Ping + 150, "attack3");
                         }
 
-                        if (!me.IsAttacking() && me.Distance2D(target) >= attackrange && Utils.SleepCheck("follow"))
+                        if (!me.IsAttacking() && me.Distance2D(target) >= attackrange && !me.Modifiers.ToList().Exists(k => k.Name == "modifier_item_hurricane_pike_range") && Utils.SleepCheck("follow"))
                         {
                             me.Move(Game.MousePosition);
                             Utils.Sleep(150 + Game.Ping, "follow");
@@ -240,7 +268,39 @@ namespace TemplerA
                     me.Move(Game.MousePosition);
                 }
             }
+
+
+            
+
+
+
         }
+
+        //private static void Psiattack(bool herras)
+
+        //// meine position, position von creeps in attack range, position von gegner inerhalb von spil range (Spill Range: 590 / 630 / 670 / 710) Spill Width: 75 
+
+        //{
+        //    var attackrange = 190 + (60 * me.Spellbook.Spell3.Level);
+
+        //    if (psi)
+        //    {
+        //        var creeps = (ObjectManager.GetEntities<Creep>().Where(creep => creep.Team != me.Team && me.Distance2D(creep) < me.GetAttackRange() && creep.IsAlive && creep.IsVisible && creep.IsSpawned && !creep.IsAncient && creep.Health > 0).DefaultIfEmpty(null).FirstOrDefault());
+        //        var mepos = me.Position;
+        //        var creeppos = mepos + me.AttackRange;
+
+        //        if (me.Position + attackrange <= creeps.Position )
+        //        {
+
+        //        }
+        //        else
+        //        {
+        //            me.Move(Game.MousePosition);
+        //        }
+
+        //    }
+
+        //}
 
         private static void Game_OnWndProc(WndEventArgs args)
         {
@@ -255,6 +315,14 @@ namespace TemplerA
                     combo = false;
                 }
 
+                if (Menu.Item("psiKey").GetValue<KeyBind>().Active)
+                    {
+                    psi = true;
+                    }
+                else
+                {
+                    psi = false;
+                }
 
 
             }
