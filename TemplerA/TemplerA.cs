@@ -20,7 +20,7 @@ namespace TemplerA
 
 
         private static Ability Refraction, Meld, Trap, ptrap;
-        private static Item blink, bkb, phase, hex, manta, hurricane;
+        private static Item blink, bkb, phase, hex, manta, hurricane, medallion, solar;
         private static readonly Menu Menu = new Menu("TemplerA", "templera", true, "npc_dota_hero_Templar_Assassin", true);
         private static Hero me, target;
         private static bool combo, psi;
@@ -43,7 +43,8 @@ namespace TemplerA
             Menu.AddToMainMenu();
             var dict = new Dictionary<string, bool>
             {
-              {"item_manta", true }, {"item_black_king_bar", true }, { "item_sheepstick", true }, {"item_phase_boots", true }, {"item_blink",true}, {"item_hurricane_pike",true}
+              {"item_manta", true }, {"item_black_king_bar", false }, { "item_sheepstick", true }, {"item_phase_boots", true }, {"item_blink",true}, {"item_hurricane_pike",true},
+              {"item_medallion_of_courage",true}, {"item_solar_crest",true}
             };
             Menu.AddItem(
                 new MenuItem("Items", "Items:").SetValue(new AbilityToggler(dict)));
@@ -93,6 +94,13 @@ namespace TemplerA
 
             if (hurricane == null)
                 hurricane = me.FindItem("item_hurricane_pike");
+
+            if (medallion == null)
+                medallion = me.FindItem("item_medallion_of_courage");
+
+            if (solar == null)
+                solar = me.FindItem("item_solar_crest");
+
 
             if (!menuvalueSet)
             {
@@ -190,6 +198,18 @@ namespace TemplerA
                         }
 
 
+                        if (medallion != null && medallion.CanBeCasted() && menuValue.IsEnabled(medallion.Name) && Utils.SleepCheck("medallion"))
+                        {                          
+                            medallion.UseAbility(target);
+                            Utils.Sleep(150 + Game.Ping, "medallion");
+                        }
+
+                        if (solar != null && solar.CanBeCasted() && menuValue.IsEnabled(solar.Name) && Utils.SleepCheck("solar"))
+                        {
+                            solar.UseAbility(target);
+                            Utils.Sleep(150 + Game.Ping, "solar");
+                        }
+
                         var dmg = me.MinimumDamage + me.BonusDamage;
                         var hp = target.Health;
 
@@ -223,7 +243,7 @@ namespace TemplerA
                             Utils.Sleep(350, "illu_attacking" + illusion.Handle);
                         }
 
-                        if (!hex.CanBeCasted() && Utils.SleepCheck("hex") && me.Distance2D(target) <= attackrange && Meld.CanBeCasted() && Utils.SleepCheck("Meld"))
+                        if (!hex.CanBeCasted() && !solar.CanBeCasted() && !medallion.CanBeCasted() && Utils.SleepCheck("hex") && me.Distance2D(target) <= attackrange && Meld.CanBeCasted() && Utils.SleepCheck("Meld"))
                         {
                             Meld.UseAbility();
                             Utils.Sleep(250 + Game.Ping, "Meld");
