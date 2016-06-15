@@ -3,7 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-
+using System.Security.Permissions;
 using Ensage;
 using Ensage.Common;
 using Ensage.Common.Extensions;
@@ -19,17 +19,18 @@ namespace TemplerA
 
 
 
+
         private static Ability Refraction, Meld, Trap, ptrap;
-        private static Item blink, bkb, phase, hex, manta, hurricane, medallion, solar;
+        private static Item blink, bkb, phase, hex, manta, hurricane, medallion, solar, dragon;
         private static readonly Menu Menu = new Menu("TemplerA", "templera", true, "npc_dota_hero_Templar_Assassin", true);
         private static Hero me, target;
         private static bool combo, psi;
-        
+        private static float attackrange;
         private static AbilityToggler menuValue;
 
         private static bool menuvalueSet;
 
-
+        [PermissionSet(SecurityAction.Assert, Unrestricted = true)]
         static void Main(string[] args)
         {
             Game.OnUpdate += Game_OnUpdate;
@@ -49,6 +50,8 @@ namespace TemplerA
             Menu.AddItem(
                 new MenuItem("Items", "Items:").SetValue(new AbilityToggler(dict)));
         }
+
+
 
 
         
@@ -101,6 +104,9 @@ namespace TemplerA
             if (solar == null)
                 solar = me.FindItem("item_solar_crest");
 
+            if (dragon == null)
+                dragon = me.FindItem("item_dragon_lance");
+
 
             if (!menuvalueSet)
             {
@@ -138,10 +144,21 @@ namespace TemplerA
 
                 }
 
+                
+
                 if (target != null && target.IsAlive && !target.IsInvul() && !target.IsIllusion)
                 {
+                    
+                    if (hurricane != null || dragon != null)
+                    {
+                         attackrange = 330 + (60 * me.Spellbook.Spell3.Level) + me.HullRadius + 24;
+                    }
+                    else
+                    {
+                         attackrange = 190 + (60 * me.Spellbook.Spell3.Level) + me.HullRadius + 24;
+                    }
 
-                    var attackrange = 190 + (60 * me.Spellbook.Spell3.Level);
+                    
                     if (me.CanAttack() && me.CanCast())
                     {
 
@@ -214,7 +231,7 @@ namespace TemplerA
                         var hp = target.Health;
 
 
-                        if (hurricane != null && hurricane.CanBeCasted() && menuValue.IsEnabled(hurricane.Name) && Utils.SleepCheck("hurricane") && hp <= (dmg * 4))
+                        if (hurricane != null && hurricane.CanBeCasted() && menuValue.IsEnabled(hurricane.Name) && Utils.SleepCheck("hurricane") && hp <= (dmg * 3))
                         {
                             hurricane.UseAbility(target);
                             Utils.Sleep(150 + Game.Ping, "hurricane");
@@ -243,7 +260,7 @@ namespace TemplerA
                             Utils.Sleep(350, "illu_attacking" + illusion.Handle);
                         }
 
-                        if (!hex.CanBeCasted() && !solar.CanBeCasted() && !medallion.CanBeCasted() && Utils.SleepCheck("hex") && me.Distance2D(target) <= attackrange && Meld.CanBeCasted() && Utils.SleepCheck("Meld"))
+                        if ( !hex.CanBeCasted() && !solar.CanBeCasted() && !medallion.CanBeCasted() && Utils.SleepCheck("hex") && me.Distance2D(target) <= attackrange && Meld.CanBeCasted() && Utils.SleepCheck("Meld"))
                         {
                             Meld.UseAbility();
                             Utils.Sleep(250 + Game.Ping, "Meld");
